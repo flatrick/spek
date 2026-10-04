@@ -15,7 +15,8 @@ import { select } from "d3-selection";
 import "d3-transition";
 import { zoom, zoomIdentity } from "d3-zoom";
 import { useEffect, useRef } from "react";
-import { changeNodeSlug } from "@spekjs/core/graph-node-id";
+import { changeNodeSlug, specNodeTopic } from "@spekjs/core/graph-node-id";
+import { nodeDisplayLabel } from "./nodeText.js";
 import { CSS_VARS, resolveColor } from "./theme.js";
 
 interface SimNode extends SimulationNodeDatum, GraphNode {
@@ -196,7 +197,7 @@ export function SpecGraph({
       .selectAll<SVGTextElement, SimNode>("text")
       .data(nodes)
       .join("text")
-      .text((d) => truncateLabel(d.label))
+      .text((d) => truncateLabel(nodeDisplayLabel(d)))
       .attr("text-anchor", "middle")
       .attr("dy", (d) => nodeRadius(d) + 16)
       .attr("fill", labelColor)
@@ -214,6 +215,12 @@ export function SpecGraph({
       .attr("stroke-width", 3)
       .attr("stroke-linejoin", "round")
       .attr("pointer-events", "none");
+
+    // A spec node's label is one segment; its full topic is the tooltip.
+    nodeSel
+      .filter((d) => d.type === "spec")
+      .append("title")
+      .text((d) => specNodeTopic(d));
 
     // 聚合圖：非主 worktree 的 change 節點以 <title> 標示來源 worktree / branch
     nodeSel
@@ -251,7 +258,8 @@ export function SpecGraph({
     nodeSel.on("click", (_event, d) => {
       if (dragged) return;
       if (d.type === "spec") {
-        onSelectSpecRef.current?.(d.label);
+        // From the id, never the label: two same-named specs in different folders share a label.
+        onSelectSpecRef.current?.(specNodeTopic(d));
       } else {
         onSelectChangeRef.current?.(changeNodeSlug(d), d.source?.key);
       }

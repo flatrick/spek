@@ -108,6 +108,7 @@
     "build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --sourcemap",
     "watch": "npm run build -- --watch",
     "type-check": "tsc -p tsconfig.json",
+    "test": "node --conditions=import --import tsx --test \"src/**/*.test.ts\"",
     "package": "vsce package --no-dependencies",
     "publish": "vsce publish --no-dependencies"
   },

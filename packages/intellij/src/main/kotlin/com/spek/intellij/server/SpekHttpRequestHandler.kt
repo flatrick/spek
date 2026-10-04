@@ -117,21 +117,31 @@ class SpekHttpRequestHandler : HttpRequestHandler() {
         if (specAtChangeMatch != null) {
             val topic = specAtChangeMatch.groupValues[1]
             val slug = specAtChangeMatch.groupValues[2]
-            return handleSpecAtChange(projectPath, topic, slug)?.let(ApiResult::Json)
-                ?: notFound("Spec version not found")
+            return specResult(projectPath, topic, slug)
         }
 
         // openspec/specs/:topic
         val specDetailMatch = Regex("""^openspec/specs/([^/]+)$""").find(apiPath)
         if (specDetailMatch != null) {
-            val topic = specDetailMatch.groupValues[1]
-            return handleSpecDetail(projectPath, topic)?.let(ApiResult::Json)
-                ?: notFound("Spec not found")
+            return specResult(projectPath, specDetailMatch.groupValues[1], null)
         }
 
-        // openspec/specs
+        // Anything else under the single-segment routes. QueryStringDecoder.path() has already decoded
+        // `%2F`, so `/specs/..%2F..%2Fx` arrives here as `openspec/specs/../../x`: a topic these routes
+        // cannot hold, refused as malformed — the same answer Express gives once it decodes the parameter.
+        if (apiPath.startsWith("openspec/specs/")) {
+            return badRequest("topic must be one relative spec path")
+        }
+
+        // openspec/specs — the list; `topic` selects a spec and `topic` + `at` its content at a change.
+        // Query selectors, because a nested topic holds `/`, which a path segment cannot carry unambiguously.
         if (apiPath == "openspec/specs") {
-            return ApiResult.Json(handleSpecs(projectPath))
+            val topics = params["topic"]
+            val ats = params["at"]
+            if (topics == null && ats == null) return ApiResult.Json(handleSpecs(projectPath))
+            if (topics?.size != 1) return badRequest("topic must be one relative spec path")
+            if (ats != null && ats.size != 1) return badRequest("at must be one change slug")
+            return specResult(projectPath, topics.single(), ats?.single())
         }
 
         // openspec/changes/:slug
@@ -224,6 +234,20 @@ class SpekHttpRequestHandler : HttpRequestHandler() {
     private fun handleSpecs(projectPath: String): String {
         val scan = OpenSpecScanner.scan(projectPath)
         return json.encodeToString(scan.specs)
+    }
+
+    /**
+     * One spec read for every route that names a spec. The topic and slug are checked before the read, so
+     * a malformed one is a 400 rather than an indistinguishable 404.
+     */
+    private fun specResult(projectPath: String, topic: String, slug: String?): ApiResult {
+        if (!SpecTopic.isSafeTopic(topic)) return badRequest("topic must be one relative spec path")
+        if (slug == null) {
+            return handleSpecDetail(projectPath, topic)?.let(ApiResult::Json) ?: notFound("Spec not found")
+        }
+        if (!SpecTopic.isSafeChangeSlug(slug)) return badRequest("at must be one change slug")
+        return handleSpecAtChange(projectPath, topic, slug)?.let(ApiResult::Json)
+            ?: notFound("Spec version not found")
     }
 
     private fun handleSpecDetail(projectPath: String, topic: String): String? {

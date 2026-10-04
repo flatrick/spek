@@ -47,9 +47,10 @@ function DiffView({ topic, entry, currentContent, onClose }: {
 }
 
 export function SpecDetail() {
-  const { topic } = useParams<{ topic: string }>();
+  // The splat is the full topic: a nested topic spans several path segments.
+  const topic = useParams()["*"] ?? "";
   const location = useLocation();
-  const { data, loading, error } = useSpec(topic ?? "");
+  const { data, loading, error } = useSpec(topic);
   const [compareEntry, setCompareEntry] = useState<HistoryEntry | null>(null);
   const fold = useSpecFold();
 

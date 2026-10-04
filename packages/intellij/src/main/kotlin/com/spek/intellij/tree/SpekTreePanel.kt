@@ -8,6 +8,7 @@ import java.awt.event.MouseEvent
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.JScrollPane
+import javax.swing.ToolTipManager
 import javax.swing.tree.DefaultMutableTreeNode
 
 class SpekTreePanel(
@@ -25,6 +26,8 @@ class SpekTreePanel(
         tree = Tree(model)
         tree.isRootVisible = false
         tree.cellRenderer = SpekTreeCellRenderer()
+        // A JTree shows its renderer's tooltip only once registered.
+        ToolTipManager.sharedInstance().registerComponent(tree)
 
         expandRoots()
 
@@ -44,12 +47,8 @@ class SpekTreePanel(
         val selectedNode = tree.lastSelectedPathComponent as? DefaultMutableTreeNode ?: return
         val nodeData = selectedNode.userObject as? SpekTreeNode ?: return
 
-        val path = when (nodeData) {
-            is SpekTreeNode.SpecItem -> "/specs/${nodeData.spec.topic}"
-            is SpekTreeNode.ChangeItem -> "/changes/${nodeData.change.slug}"
-            else -> return
-        }
-
+        // A grouping folder has no spec, so it opens nothing; the double-click only toggles it.
+        val path = navigationPath(nodeData) ?: return
         onNavigate(path)
     }
 
