@@ -13,6 +13,8 @@ The system SHALL use React Router v7 to define the following routes. The web ent
 | `/specs/*` | SpecDetail for a full topic path | Layout |
 | `/changes` | ChangeList | Layout |
 | `/changes/:slug` | ChangeDetail | Layout |
+| `/graph` | GraphView | Layout |
+| `/timeline` | TimelinePage | Layout |
 | `/schemas` | SchemaList | Layout |
 | `/schemas/:name` | SchemaDetail | Layout |
 

@@ -3,7 +3,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Specs tree listing
-The IntelliJ plugin SHALL display a folder tree of all specs from the OpenSpec repository. Folder and spec items SHALL be sorted within each folder by comparing one path segment at a time by UTF-16 code unit, matching the web and VS Code trees; each spec item SHALL show its final topic path segment and retain its full topic path for navigation. A folder with its own spec SHALL remain openable while also expanding to child topics.
+The IntelliJ plugin SHALL display a folder tree of all specs from the OpenSpec repository. Folder and spec items SHALL be sorted within each folder by comparing one path segment at a time by UTF-16 code unit, matching the web and VS Code trees; each spec item SHALL show its final topic path segment, carry its full topic path as its tooltip, and retain its full topic path for navigation. A folder with its own spec SHALL remain openable while also expanding to child topics.
 
 #### Scenario: Display specs list
 - **WHEN** the user opens the spek Tool Window
@@ -12,6 +12,7 @@ The IntelliJ plugin SHALL display a folder tree of all specs from the OpenSpec r
 #### Scenario: Parent spec with child topic
 - **WHEN** `contracts/pagination` has its own spec and child topic `contracts/pagination/streaming-search`
 - **THEN** both specs appear in the tree and the parent remains openable and expandable
+- **AND** hovering the child item, labelled `streaming-search`, shows `contracts/pagination/streaming-search`
 
 #### Scenario: Empty specs
 - **WHEN** the project has an openspec directory with no specs
