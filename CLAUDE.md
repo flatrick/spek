@@ -86,6 +86,7 @@ temporary workflow asserting the outputs, then removed: on the PR branch with `u
 packages/
 ├── core/       # @spekjs/core — pure logic (scanner.ts, tasks.ts, artifact-files.ts, artifact-discovery.ts, schema-order.ts, schemas.ts,
 │            #   search.ts=the search rule, search-documents.ts=its Node corpus,
+│            #   spec-files.ts=nested spec discovery, spec-topic.ts=topic rule + tree,
 │            #   schema-flow.ts, openspec-cli.ts, git-cache.ts, types.ts)
 ├── ui/         # @spekjs/ui — visual components (SpecGraph.tsx, timeline/*, theme.ts=color contract, styles.css)
 ├── web/        # @spekjs/web — server/ (Express API) + src/ (React SPA + API adapters)
@@ -189,6 +190,20 @@ behavior lives in `openspec/specs/`; the key entry points:
   content and builds the objects. count, search, and discovery all derive from `rootKind`, so a shown tab is always
   counted and searchable. Kotlin mirrors the pair: `ArtifactFiles.kt` + `ArtifactDiscovery.kt`. A `data` artifact
   renders as a syntax-highlighted code block (fence language from the extension), with no TOC and no folding
+- **Nested spec topics**: a topic is the `/`-joined directory path relative to a `specs/` root
+  (`contracts/pagination/streaming-search`), on every OS, for main specs and change deltas alike. `discoverSpecFiles`
+  (`spec-files.ts`; Kotlin `SpecFiles.kt`) states **OpenSpec's own discovery rule** — skip dot-entries, never follow a
+  symlinked directory, ignore a `spec.md` in the `specs/` root, accept a symlinked `spec.md` only if it resolves inside
+  the specs root or its own capability dir. One deliberate divergence: where OpenSpec *throws* (an escaping link, an
+  unreadable dir) spek omits that entry and keeps scanning — a viewer blanking the whole repo over one entry is worse
+  than one missing spec; don't "fix" it back to a throw. **A spec is readable only if discovery would list it**:
+  `resolveSpecFile` re-applies the rule to the one path (lstat per segment), and `isSafeSpecTopic` / `isSafeChangeSlug`
+  (browser-safe `@spekjs/core/spec-topic` subpath; Kotlin `SpecTopic.kt`, `\A`/`\z`-anchored) guard **every** read,
+  legacy single-segment routes included, since Express decodes `%2F` inside a path parameter. Flat lists sort by
+  `compareCodeUnits` on the full topic; trees (`buildSpecTree` / `pruneSpecTree`) sort **per segment**, or `a-b` lands
+  between `a` and `a/c`. A displayed label is the final segment (`specTopicLabel`) and **no action reads its target off a
+  label** — the graph navigates via `specNodeTopic(node)`, which reads the `spec:<topic>` id, since two `streaming-search` nodes share a label. Nested
+  *changes* are out of scope: OpenSpec rejects them, so a slug stays one directory name
 - `readSpec` / `readSpecAtChange`, `buildGraphData` / `buildGraphDataAggregated` (aggregated node ids
   `change:<wtKey>:<slug>` avoid collisions), `listWorktrees`, `parseTasks`
 - **jj workspace support (EXPERIMENTAL)**: `listJjWorkspaces(dir)` (`jj workspace list`),
@@ -406,8 +421,10 @@ GET /api/fs/browse?path=...                        # directory browse
 GET /api/fs/detect?path=...                         # detect openspec/
 GET /api/openspec/overview?dir=...&aggregate=       # overview stats
 GET /api/openspec/specs?dir=...                     # spec list
-GET /api/openspec/specs/:topic?dir=...              # single spec
-GET /api/openspec/specs/:topic/at/:slug?dir=...     # spec at a change (diff)
+GET /api/openspec/specs?dir=...&topic=...           # single spec (full topic path, may be nested)
+GET /api/openspec/specs?dir=...&topic=...&at=...    # spec at a change (diff)
+GET /api/openspec/specs/:topic?dir=...              # legacy single-segment route, same topic validation
+GET /api/openspec/specs/:topic/at/:slug?dir=...     # legacy single-segment route, same topic validation
 GET /api/openspec/changes?dir=...&aggregate=        # changes list
 GET /api/openspec/changes/:slug?dir=...&wt=         # single change
 GET /api/openspec/graph?dir=...&aggregate=          # spec-change graph
@@ -474,7 +491,7 @@ GET /api/openspec/search?dir=...&q=...              # full-text search
     Platform Gradle Plugin is pinned at **2.9.0**: 2.11.0+ needs Gradle 8.13+, 2.14.0+ needs Gradle 9, and the wrapper
     is 8.11.1 — 2.9.0 is also the version that added the `intellijIdea(...)` helper the 2026.x target needs.
 
-**Frontend routes**: `/` (SelectRepo, web only) → `/dashboard` → `/specs` → `/specs/:topic` → `/changes` → `/changes/:slug` → `/graph` → `/schemas` → `/schemas/:name`
+**Frontend routes**: `/` (SelectRepo, web only) → `/dashboard` → `/specs` → `/specs/*` (full topic path, each segment encoded via `specRoute`) → `/changes` → `/changes/:slug` → `/graph` → `/schemas` → `/schemas/:name`
 
 ## Key Design Decisions
 
