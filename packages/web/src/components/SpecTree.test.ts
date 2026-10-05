@@ -59,3 +59,10 @@ test("history counts remain on spec items", () => {
   assert.match(render(), />2 changes</);
   assert.match(render(), />1 change</);
 });
+
+test("while filtering, the toggles are inert, so no collapse is recorded to surface later", () => {
+  const toggles = (html: string) => [...html.matchAll(/<button[^>]*>/g)].map((m) => m[0]);
+  assert.ok(toggles(render("pag")).length > 0);
+  for (const button of toggles(render("pag"))) assert.match(button, /\sdisabled=""/);
+  for (const button of toggles(render())) assert.doesNotMatch(button, /\sdisabled/);
+});

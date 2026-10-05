@@ -24,8 +24,10 @@ export function SpecTree({ specs, filter }: SpecTreeProps) {
 
   if (nodes.length === 0) return <p className="text-text-muted text-sm">No specs found</p>;
 
-  // A filter shows every match, so it opens whatever it kept.
-  const isOpen = (path: string) => filter !== "" || !collapsed.has(path);
+  // A filter shows every match, so it opens whatever it kept, and its toggles are inert: a collapse
+  // recorded now would only surface once the filter is cleared.
+  const filtering = filter !== "";
+  const isOpen = (path: string) => filtering || !collapsed.has(path);
   const toggle = (path: string) =>
     setCollapsed((prev) => {
       const next = new Set(prev);
@@ -34,13 +36,14 @@ export function SpecTree({ specs, filter }: SpecTreeProps) {
       return next;
     });
 
-  return <SpecTreeLevel nodes={nodes} isOpen={isOpen} toggle={toggle} />;
+  return <SpecTreeLevel nodes={nodes} isOpen={isOpen} toggle={toggle} filtering={filtering} />;
 }
 
-function SpecTreeLevel({ nodes, isOpen, toggle }: {
+function SpecTreeLevel({ nodes, isOpen, toggle, filtering }: {
   nodes: SpecTreeNode<SpecInfo>[];
   isOpen: (path: string) => boolean;
   toggle: (path: string) => void;
+  filtering: boolean;
 }) {
   return (
     <ul className="space-y-1">
@@ -54,9 +57,10 @@ function SpecTreeLevel({ nodes, isOpen, toggle }: {
                 <button
                   type="button"
                   onClick={() => toggle(node.path)}
+                  disabled={filtering}
                   aria-expanded={open}
                   aria-label={`${open ? "Collapse" : "Expand"} ${node.path}`}
-                  className="w-4 text-text-muted hover:text-accent"
+                  className="w-4 text-text-muted enabled:hover:text-accent"
                 >
                   {open ? "▾" : "▸"}
                 </button>
@@ -80,7 +84,7 @@ function SpecTreeLevel({ nodes, isOpen, toggle }: {
             </div>
             {hasChildren && open && (
               <div className="pl-6 mt-1">
-                <SpecTreeLevel nodes={node.children} isOpen={isOpen} toggle={toggle} />
+                <SpecTreeLevel nodes={node.children} isOpen={isOpen} toggle={toggle} filtering={filtering} />
               </div>
             )}
           </li>
