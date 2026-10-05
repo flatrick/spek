@@ -46,9 +46,16 @@ function DiffView({ topic, entry, currentContent, onClose }: {
   );
 }
 
+/**
+ * The splat is the full topic: a nested topic spans several path segments. The splat keeps a trailing
+ * slash, which no topic has, so `/specs/auth/` would otherwise ask for `auth/` and be refused.
+ */
+export function specTopicFromSplat(splat: string | undefined): string {
+  return (splat ?? "").replace(/\/+$/, "");
+}
+
 export function SpecDetail() {
-  // The splat is the full topic: a nested topic spans several path segments.
-  const topic = useParams()["*"] ?? "";
+  const topic = specTopicFromSplat(useParams()["*"]);
   const location = useLocation();
   const { data, loading, error } = useSpec(topic);
   const [compareEntry, setCompareEntry] = useState<HistoryEntry | null>(null);

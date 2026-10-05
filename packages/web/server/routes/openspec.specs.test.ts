@@ -62,6 +62,7 @@ test("malformed selectors are 400", async () => {
     "&topic=contracts%2F%2Fpagination",
     "&topic=%2Fabs",
     "&topic=auth%0A",
+    "&topic=auth%2F",
     "&topic=.drafts%2Fhidden",
     "&topic=auth&topic=auth",
     "&at=add-streaming-search",
