@@ -53,8 +53,9 @@ object SpecFiles {
 
     /**
      * The `spec.md` of [topic] under [specsRoot], or null — only when discovery would list that topic:
-     * every intermediate directory must be a real directory (not a link), and a linked `spec.md` must
-     * pass discovery's target rule. Containment alone would admit `.drafts/x` or a path through a
+     * every segment and `spec.md` must be spelled as its directory stores it, every intermediate
+     * directory must be a real directory (not a link), and a linked `spec.md` must pass discovery's
+     * target rule. Containment alone would admit `.drafts/x` or a path through a
      * symlinked directory, neither of which the list shows.
      */
     fun resolve(specsRoot: File, topic: String): File? = resolve(specsRoot, topic, RealFs)
@@ -68,10 +69,12 @@ object SpecFiles {
                 // A segment that resolves anywhere but directly under its parent (a drive-relative
                 // `C:x` on Windows) is not a child directory.
                 if (next.parent != dir) return null
+                if (!hasEntry(fs, dir, segment)) return null
                 val attrs = fs.attributes(next) ?: return null
                 if (!attrs.isDirectory) return null
                 dir = next
             }
+            if (!hasEntry(fs, dir, "spec.md")) return null
             val file = dir.resolve("spec.md")
             val attrs = fs.attributes(file) ?: return null
             when {
@@ -82,6 +85,18 @@ object SpecFiles {
         } catch (e: InvalidPathException) {
             null
         }
+    }
+
+    /**
+     * True when [dir] holds an entry spelled exactly [name]. A case-insensitive filesystem (macOS,
+     * Windows) answers for `AUTH` or, on Windows, `auth.` too, but discovery lists names as stored.
+     */
+    private fun hasEntry(fs: Fs, dir: Path, name: String): Boolean = try {
+        fs.open(dir).use { stream -> stream.any { it.fileName.toString() == name } }
+    } catch (e: IOException) {
+        false
+    } catch (e: DirectoryIteratorException) {
+        false
     }
 
     private fun walk(specsRoot: File, fs: Fs): Sequence<SpecFile> = sequence {

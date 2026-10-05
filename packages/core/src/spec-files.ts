@@ -42,6 +42,18 @@ function lstatOrNull(p: string): fs.Stats | null {
   }
 }
 
+/**
+ * True when `dir` holds an entry spelled exactly `name`. A case-insensitive filesystem (macOS, Windows)
+ * answers an lstat for `AUTH` or, on Windows, `auth.` too, but discovery lists names as stored.
+ */
+function hasEntry(dir: string, name: string): boolean {
+  try {
+    return fs.readdirSync(dir).includes(name);
+  } catch {
+    return false;
+  }
+}
+
 /** The target rule for a `spec.md` that is a symlink. `capabilityDir` is the directory holding it. */
 function isAcceptedSpecLink(specsRoot: string, capabilityDir: string, file: string): boolean {
   let isFile: boolean;
@@ -96,16 +108,19 @@ export function hasSpecFiles(specsRoot: string): boolean {
  *
  * Containment is not enough: `.drafts/x`, or a path through a symlinked directory pointing back inside
  * the root, stays contained yet names a topic the list never shows. So discovery's rule is applied to
- * this one path: the validator refuses dotted segments, every intermediate directory must be a real
- * directory (lstat, not stat), and a linked `spec.md` must pass the same target rule.
+ * this one path: the validator refuses dotted segments, every segment and `spec.md` must be spelled as
+ * its directory stores it, every intermediate directory must be a real directory (lstat, not stat), and
+ * a linked `spec.md` must pass the same target rule.
  */
 export function resolveSpecFile(specsRoot: string, topic: string): string | null {
   if (!isSafeSpecTopic(topic)) return null;
   let dir = specsRoot;
   for (const segment of topic.split("/")) {
+    if (!hasEntry(dir, segment)) return null;
     dir = path.join(dir, segment);
     if (!lstatOrNull(dir)?.isDirectory()) return null;
   }
+  if (!hasEntry(dir, "spec.md")) return null;
   const file = path.join(dir, "spec.md");
   const st = lstatOrNull(file);
   if (st?.isFile()) return file;

@@ -13,7 +13,7 @@ import {
   scanOpenSpec,
 } from "./scanner.js";
 import { changeDirMtime, countArtifacts } from "./artifact-files.js";
-import { discoverSpecFiles } from "./spec-files.js";
+import { discoverSpecFiles, resolveSpecFile } from "./spec-files.js";
 import { collectSearchDocuments, searchRepository } from "./search-documents.js";
 
 // Shared with the Kotlin tests: test-fixtures/nested-specs is one corpus both scanners must agree on.
@@ -200,4 +200,37 @@ test("a symlinked directory is not followed, and a topic through it is not reada
   assert.equal(await readSpec(repo, "alias/pagination"), null);
   assert.equal(await readSpec(repo, "vendor/api"), null);
   assert.ok(await readSpec(repo, "contracts/pagination"));
+});
+
+// Linux is case-sensitive, so a case-insensitive lookup (macOS, Windows) is simulated: lstat answers for
+// a spelling the directory does not hold, the way those filesystems do. Discovery lists names as stored.
+function aliasingLstat(t: TestContext, specs: string, alias: (segment: string) => string): void {
+  const real = fs.lstatSync;
+  t.mock.method(fs, "lstatSync", (p: fs.PathLike, ...rest: unknown[]) => {
+    const rel = path.relative(specs, String(p));
+    const target = rel.startsWith("..") ? String(p) : path.join(specs, ...rel.split(path.sep).map(alias));
+    return (real as (...a: unknown[]) => fs.Stats)(target, ...rest);
+  });
+}
+
+for (const [fsName, alias, spellings] of [
+  ["case-insensitive", (s: string) => s.toLowerCase(), ["AUTH", "Auth"]],
+  ["Windows trailing-dot", (s: string) => s.replace(/\.+$/, ""), ["auth.", "auth.."]],
+] as const) {
+  test(`on a ${fsName} filesystem, only the spelling discovery lists resolves`, (t) => {
+    const repo = tempRepo({ "specs/auth/spec.md": "x" });
+    const specs = path.join(repo, "openspec", "specs");
+    aliasingLstat(t, specs, alias);
+    assert.deepEqual(discoverSpecFiles(specs).map((s) => s.topic), ["auth"]);
+    assert.ok(resolveSpecFile(specs, "auth"));
+    for (const spelling of spellings) assert.equal(resolveSpecFile(specs, spelling), null, spelling);
+  });
+}
+
+test("on a case-insensitive filesystem, a differently cased spec.md is not a spec", (t) => {
+  const repo = tempRepo({ "specs/auth/Spec.md": "x" });
+  const specs = path.join(repo, "openspec", "specs");
+  aliasingLstat(t, specs, (s) => (s === "spec.md" ? "Spec.md" : s));
+  assert.deepEqual(discoverSpecFiles(specs), []);
+  assert.equal(resolveSpecFile(specs, "auth"), null);
 });

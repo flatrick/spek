@@ -197,7 +197,7 @@ behavior lives in `openspec/specs/`; the key entry points:
   the specs root or its own capability dir. One deliberate divergence: where OpenSpec *throws* (an escaping link, an
   unreadable dir) spek omits that entry and keeps scanning — a viewer blanking the whole repo over one entry is worse
   than one missing spec; don't "fix" it back to a throw. **A spec is readable only if discovery would list it**:
-  `resolveSpecFile` re-applies the rule to the one path (lstat per segment), and `isSafeSpecTopic` / `isSafeChangeSlug`
+  `resolveSpecFile` re-applies the rule to the one path (each segment spelled as its directory lists it — a case-insensitive filesystem would otherwise resolve `AUTH` — then lstat), and `isSafeSpecTopic` / `isSafeChangeSlug`
   (browser-safe `@spekjs/core/spec-topic` subpath; Kotlin `SpecTopic.kt`, `\A`/`\z`-anchored) guard **every** read,
   legacy single-segment routes included, since Express decodes `%2F` inside a path parameter. Flat lists sort by
   `compareCodeUnits` on the full topic; trees (`buildSpecTree` / `pruneSpecTree`) sort **per segment**, or `a-b` lands
