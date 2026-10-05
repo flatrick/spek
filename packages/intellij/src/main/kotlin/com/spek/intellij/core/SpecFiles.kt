@@ -2,6 +2,8 @@ package com.spek.intellij.core
 
 import java.io.File
 import java.io.IOException
+import java.nio.file.DirectoryIteratorException
+import java.nio.file.DirectoryStream
 import java.nio.file.Files
 import java.nio.file.InvalidPathException
 import java.nio.file.LinkOption
@@ -22,11 +24,32 @@ object SpecFiles {
 
     data class SpecFile(val topic: String, val file: File)
 
+    /** The two filesystem reads the rule makes, so a test can stand in for a filesystem it cannot create. */
+    internal interface Fs {
+        fun open(dir: Path): DirectoryStream<Path>
+
+        /** The entry's own attributes, not its target's. Null when it cannot be read. */
+        fun attributes(path: Path): BasicFileAttributes?
+    }
+
+    internal object RealFs : Fs {
+        override fun open(dir: Path): DirectoryStream<Path> = Files.newDirectoryStream(dir)
+
+        override fun attributes(path: Path): BasicFileAttributes? = try {
+            Files.readAttributes(path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+        } catch (e: IOException) {
+            null
+        }
+    }
+
     /** Every spec under [specsRoot], ordered by topic in code-unit order. A missing root is empty. */
-    fun discover(specsRoot: File): List<SpecFile> = walk(specsRoot).toList().sortedBy { it.topic }
+    fun discover(specsRoot: File): List<SpecFile> = discover(specsRoot, RealFs)
+
+    internal fun discover(specsRoot: File, fs: Fs): List<SpecFile> =
+        walk(specsRoot, fs).toList().sortedBy { it.topic }
 
     /** True when [specsRoot] holds at least one spec. Stops at the first. */
-    fun hasAny(specsRoot: File): Boolean = walk(specsRoot).any()
+    fun hasAny(specsRoot: File): Boolean = walk(specsRoot, RealFs).any()
 
     /**
      * The `spec.md` of [topic] under [specsRoot], or null — only when discovery would list that topic:
@@ -34,7 +57,9 @@ object SpecFiles {
      * pass discovery's target rule. Containment alone would admit `.drafts/x` or a path through a
      * symlinked directory, neither of which the list shows.
      */
-    fun resolve(specsRoot: File, topic: String): File? {
+    fun resolve(specsRoot: File, topic: String): File? = resolve(specsRoot, topic, RealFs)
+
+    internal fun resolve(specsRoot: File, topic: String, fs: Fs): File? {
         if (!SpecTopic.isSafeTopic(topic)) return null
         return try {
             var dir = specsRoot.toPath()
@@ -43,12 +68,12 @@ object SpecFiles {
                 // A segment that resolves anywhere but directly under its parent (a drive-relative
                 // `C:x` on Windows) is not a child directory.
                 if (next.parent != dir) return null
-                val attrs = attributes(next) ?: return null
+                val attrs = fs.attributes(next) ?: return null
                 if (!attrs.isDirectory) return null
                 dir = next
             }
             val file = dir.resolve("spec.md")
-            val attrs = attributes(file) ?: return null
+            val attrs = fs.attributes(file) ?: return null
             when {
                 attrs.isRegularFile -> file.toFile()
                 attrs.isSymbolicLink && isAcceptedLink(specsRoot.toPath(), dir, file) -> file.toFile()
@@ -59,35 +84,31 @@ object SpecFiles {
         }
     }
 
-    private fun walk(specsRoot: File): Sequence<SpecFile> = sequence {
-        visit(specsRoot.toPath(), specsRoot.toPath(), emptyList())
+    private fun walk(specsRoot: File, fs: Fs): Sequence<SpecFile> = sequence {
+        visit(fs, specsRoot.toPath(), specsRoot.toPath(), emptyList())
     }
 
-    private suspend fun SequenceScope<SpecFile>.visit(root: Path, dir: Path, segments: List<String>) {
+    private suspend fun SequenceScope<SpecFile>.visit(fs: Fs, root: Path, dir: Path, segments: List<String>) {
         val entries = try {
-            Files.newDirectoryStream(dir).use { it.toList() }
+            fs.open(dir).use { it.toList() }
         } catch (e: IOException) {
+            return
+        } catch (e: DirectoryIteratorException) {
+            // Iteration reports I/O errors unchecked, and not as an IOException.
             return
         }
         for (entry in entries) {
             val name = entry.fileName.toString()
             if (name.startsWith(".")) continue
-            val attrs = attributes(entry) ?: continue
+            val attrs = fs.attributes(entry) ?: continue
             if (attrs.isDirectory) {
-                visit(root, entry, segments + name)
+                visit(fs, root, entry, segments + name)
             } else if (name == "spec.md" && segments.isNotEmpty()) {
                 if (attrs.isRegularFile || (attrs.isSymbolicLink && isAcceptedLink(root, dir, entry))) {
                     yield(SpecFile(segments.joinToString("/"), entry.toFile()))
                 }
             }
         }
-    }
-
-    /** The entry's own attributes, not its target's. Null when it cannot be read. */
-    private fun attributes(path: Path): BasicFileAttributes? = try {
-        Files.readAttributes(path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
-    } catch (e: IOException) {
-        null
     }
 
     private fun isAcceptedLink(root: Path, capabilityDir: Path, file: Path): Boolean = try {
