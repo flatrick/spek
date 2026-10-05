@@ -67,7 +67,7 @@ class SpecFolderItem extends vscode.TreeItem {
     super(node.name, vscode.TreeItemCollapsibleState.Collapsed);
     this.tooltip = node.path;
     this.iconPath = new vscode.ThemeIcon(node.spec ? "file-text" : "folder");
-    // 點擊 spec 本體仍開啟完整 spec 頁面；展開 chevron 會列出子 topic 與 heading 子節點
+    // Clicking a spec still opens the full spec page; expanding it lists child topics and headings.
     if (node.spec) {
       this.command = {
         command: "spek.navigateTo",
