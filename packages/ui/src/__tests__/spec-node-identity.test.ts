@@ -18,6 +18,10 @@ test("a nested spec node shows its final segment", () => {
   );
 });
 
+test("a consumer's own spec label is shown, not rebuilt from the id", () => {
+  assert.equal(nodeDisplayLabel({ id: "spec:auth", type: "spec", label: "Authentication" }), "Authentication");
+});
+
 test("two same-named nodes share a label but each reports its own topic", () => {
   const a = spec("contracts/streaming-search");
   const b = spec("guides/streaming-search");
