@@ -109,7 +109,7 @@ npm run build:demo       # standalone demo (docs/demo.html; needs NODE_ENV=produ
 npm run build:intellij   # IntelliJ webview assets
 npm run type-check       # type-check core + ui + web + vscode + scripts/ (tests included)
 npm run lint             # ESLint over every package's src, web's server, and scripts/
-npm test                 # core + ui + web + scripts/ tests
+npm test                 # core + ui + web + vscode + scripts/ tests
 ```
 
 **CI runs exactly these scripts** (`.github/workflows/ci.yml`, on `pull_request` + `push:[master]`), plus
