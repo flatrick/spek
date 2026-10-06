@@ -1,7 +1,9 @@
 ## Purpose
 
 Scan an openspec/ directory and turn its specs and changes into the structured data every spek delivery surface reads.
+
 ## Requirements
+
 ### Requirement: Scan OpenSpec directory structure
 The scanner SHALL be an async function in the `@spekjs/core` package that reads an OpenSpec directory and returns its complete structure including specs, active changes, and archived changes. Each `ChangeInfo` SHALL include a `timestamp` field (ISO 8601 string or null) obtained from the git timestamp cache, a `createdDate` field (string in `YYYY-MM-DD` format or null) parsed from the change's `.openspec.yaml` `created` frontmatter field, and an `archivedDate` field (string in `YYYY-MM-DD` format or null). The `archivedDate` SHALL be derived from the archive folder name prefix `YYYY-MM-DD-slug` for archived changes only, and SHALL be null for active changes. Changes SHALL be sorted by timestamp descending (most recent first), falling back to slug date when timestamp is unavailable. It SHALL use Node.js `fs` directly and have no dependency on Express or any HTTP framework.
 
@@ -146,6 +148,10 @@ The scanner SHALL discover specs below the main `openspec/specs/` tree and each 
 - **THEN** no topic `auth` is discovered from it and its target is not read
 - **AND** the scan still succeeds and returns every other topic — a deliberate divergence from OpenSpec, whose discovery fails on this input
 
+#### Scenario: Unreadable directory is omitted
+- **WHEN** listing or iterating a directory under a `specs/` tree fails, including partway through its entries
+- **THEN** the specs below that directory are omitted and the scan still returns every other topic, on every host
+
 #### Scenario: Symlinked directory is not followed
 - **WHEN** `openspec/specs/vendor` is a symlink to a directory containing `api/spec.md`
 - **THEN** no topic under `vendor` is discovered
@@ -160,7 +166,7 @@ The scanner SHALL discover specs below the main `openspec/specs/` tree and each 
 - **AND** its artifact count and Specs artifact modification time reflect that nested file
 
 ### Requirement: Resolve spec topic paths safely
-Spec reads SHALL accept slash-separated relative topic IDs and SHALL reject empty, absolute, traversal, or otherwise escaping topic paths. A resolved spec file SHALL remain within the requested main or change specs tree. A spec read SHALL succeed only for a topic that discovery would list: a topic with a segment beginning with `.`, a path through a symlinked directory, or a symlinked `spec.md` that fails discovery's target rule SHALL return no content. The topic rule SHALL be stated once, as an exported core function, and every spec read SHALL apply it, whichever route or adapter delivered the topic.
+Spec reads SHALL accept slash-separated relative topic IDs and SHALL reject empty, absolute, traversal, or otherwise escaping topic paths. A resolved spec file SHALL remain within the requested main or change specs tree. A spec read SHALL succeed only for a topic that discovery would list: a topic with a segment beginning with `.`, a path through a symlinked directory, a segment or `spec.md` spelled other than as its directory lists it, or a symlinked `spec.md` that fails discovery's target rule SHALL return no content. The topic rule SHALL be stated once, as an exported core function, and every spec read SHALL apply it, whichever route or adapter delivered the topic.
 
 #### Scenario: Invalid topic does not read outside specs
 - **WHEN** a spec read receives `../secrets`, `contracts//pagination`, or an absolute path as its topic
@@ -177,3 +183,7 @@ Spec reads SHALL accept slash-separated relative topic IDs and SHALL reject empt
 #### Scenario: A topic through a symlinked directory is not readable
 - **WHEN** `openspec/specs/alias` is a symlink to `openspec/specs/contracts` and a spec read receives `alias/pagination`
 - **THEN** it returns no spec content, although the resolved file lies inside the specs tree
+
+#### Scenario: A topic spelled differently from its directory is not readable
+- **WHEN** `openspec/specs/auth/spec.md` exists on a case-insensitive filesystem and a spec read receives `AUTH`, or `auth.` on Windows
+- **THEN** it returns no spec content, as discovery lists only `auth`

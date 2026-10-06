@@ -3,6 +3,7 @@
 定義前端 SPA 路由（dashboard / specs / changes / graph 等），並適配 Web 與 Webview 環境。
 
 ## Requirements
+
 ### Requirement: Client-side routing
 The system SHALL use React Router v7 to define the following routes. The web entry point SHALL use `createBrowserRouter`; embedded webviews SHALL use their existing memory routers with the same spec route behavior:
 
@@ -19,7 +20,7 @@ The system SHALL use React Router v7 to define the following routes. The web ent
 | `/schemas` | SchemaList | Layout |
 | `/schemas/:name` | SchemaDetail | Layout |
 
-Spec links SHALL encode each topic path segment and SHALL preserve the full topic across direct loading, refresh, and in-app navigation. Single-level spec URLs SHALL continue to work.
+Spec links SHALL encode each topic path segment and SHALL preserve the full topic across direct loading, refresh, and in-app navigation. Single-level spec URLs SHALL continue to work. Trailing slashes on a spec URL SHALL be dropped before the topic is read, as the former single-segment route did.
 
 #### Scenario: Route to SelectRepo
 - **WHEN** user navigates to `/`
@@ -40,6 +41,10 @@ Spec links SHALL encode each topic path segment and SHALL preserve the full topi
 #### Scenario: Direct nested spec URL
 - **WHEN** user opens or refreshes `/specs/contracts/pagination/streaming-search`
 - **THEN** SpecDetail loads topic `contracts/pagination/streaming-search`
+
+#### Scenario: Spec URL with a trailing slash
+- **WHEN** user opens `/specs/auth/`
+- **THEN** SpecDetail loads topic `auth`
 
 ### Requirement: RepoContext state management
 The system SHALL provide a React Context (`RepoContext`) that stores the current repo path. All API hooks SHALL read the repo path from this context.

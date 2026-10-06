@@ -1,7 +1,9 @@
 ## Purpose
 
 提供 spec-change 關聯的力導向圖視覺化，讓使用者探索 specs 與 changes 之間的關係。
+
 ## Requirements
+
 ### Requirement: Graph page route
 The system SHALL provide a `/graph` route that renders the Graph View page within the shared Layout. The page SHALL be accessible from all three modes (Web, VS Code Webview, Demo).
 
@@ -255,7 +257,7 @@ Divergent jj copies remain distinct nodes via their differing workspace keys.
   not inflated
 
 ### Requirement: Graph uses full nested topic identity
-The graph SHALL create one spec node per full topic path and connect a change to a spec only when its delta has that exact topic. A spec node's visible label SHALL be the topic's final path segment, and the full topic path SHALL be available as the node's tooltip; click navigation SHALL use the full topic path taken from the node's identity, never from its displayed label. Under worktree aggregation, spec nodes SHALL continue to come only from the main worktree.
+The graph SHALL create one spec node per full topic path and connect a change to a spec only when its delta has that exact topic. A spec node's visible label SHALL be the final path segment of the node's own label, which core sets to the full topic, so a label supplied by a `@spekjs/ui` consumer still shows; and the full topic path SHALL be available as the node's tooltip; click navigation SHALL use the full topic path taken from the node's identity, never from its displayed label. Under worktree aggregation, spec nodes SHALL continue to come only from the main worktree.
 
 #### Scenario: Parent and child have separate nodes
 - **WHEN** main specs contain `contracts/pagination` and `contracts/pagination/streaming-search`
@@ -274,3 +276,7 @@ The graph SHALL create one spec node per full topic path and connect a change to
 #### Scenario: Same-named nodes navigate to their own topics
 - **WHEN** main specs contain `contracts/streaming-search` and `guides/streaming-search`, both labelled `streaming-search`
 - **THEN** clicking each node opens its own full topic, not the other's
+
+#### Scenario: A consumer's own label still shows
+- **WHEN** a `@spekjs/ui` consumer passes a spec node with id `spec:auth` and label `Authentication`
+- **THEN** the node reads `Authentication`, and clicking it still reports topic `auth`
