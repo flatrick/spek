@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.19.0
+
+**Highlight: specs grouped into folders are visible.** OpenSpec accepts a `spec.md` at any depth under `openspec/specs/` — `specs/contracts/pagination/spec.md` is a valid capability — but spek only looked one level down, so a repository that groups its capabilities into folders showed nothing for them. Thanks to [@flatrick](https://github.com/flatrick) (Patrik) ([#61](https://github.com/spekhq/spek/pull/61))
+
+- **Specs are found at any depth**, in the main specs tree and in every change's delta specs, by OpenSpec's own rule: dot-entries are skipped, symlinked folders are not followed, and a linked `spec.md` counts only if it points inside the specs tree. A spec's name is its full path, e.g. `contracts/pagination`
+- **The Specs page is a folder tree with a filter**, and the VS Code sidebar and IntelliJ tool window nest the same way. In VS Code, a spec that also has specs under it lists them before its own headings
+- **The graph labels a nested spec by its last segment**, with the full path as its tooltip, and two specs with the same last segment open their own pages
+- **Security: a spec read can no longer reach outside the specs a scan lists.** The web server built the file path straight from the spec or change name in the URL, so a name carrying `../` (also as an encoded `%2F`) could read a file outside the repository. Every spec read, on every surface, now checks the name and serves only a spec the list would show
+- **Behaviour change**: a symlinked folder under `specs/` is no longer listed, and neither is a `spec.md` symlink pointing outside it, matching what OpenSpec itself validates and archives
+- *Internal:* `@spekjs/core` 1.14.0 adds the `@spekjs/core/spec-topic` subpath; `@spekjs/ui` 1.4.0 requires it
+
 ## 1.18.1
 
 Three fixes, two of them to the GitHub Action.
