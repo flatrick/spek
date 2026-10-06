@@ -24,6 +24,7 @@ const noOrder = async () => null;
 const EXPECTED = JSON.parse(fs.readFileSync(path.join(FIXTURE, "expected.json"), "utf-8")) as {
   topics: string[];
   historyCounts: Record<string, number>;
+  historyChanges: Record<string, string[]>;
   edges: [string, string][];
   searchSpecTopics: Record<string, string[]>;
 };
@@ -44,10 +45,17 @@ test("fixture: history counts follow the exact nested topic", async () => {
   assert.deepEqual(counts, EXPECTED.historyCounts);
 });
 
+test("fixture: each spec names its changes by directory, active and archived, one change across two specs", async () => {
+  const scan = await scanOpenSpec(FIXTURE);
+  const changes = Object.fromEntries(scan.specs.map((s) => [s.topic, s.historyChanges]));
+  assert.deepEqual(changes, EXPECTED.historyChanges);
+  for (const spec of scan.specs) assert.equal(spec.historyCount, spec.historyChanges.length, spec.topic);
+});
+
 test("fixture: parent, child, and same-basename histories stay separate", async () => {
   assert.deepEqual(findRelatedChanges(FIXTURE, "contracts/pagination"), ["2026-01-10-add-pagination"]);
   assert.deepEqual(findRelatedChanges(FIXTURE, "contracts/pagination/streaming-search"), ["add-streaming-search"]);
-  assert.deepEqual(findRelatedChanges(FIXTURE, "guides/pagination"), ["2026-02-01-add-guides"]);
+  assert.deepEqual(findRelatedChanges(FIXTURE, "guides/pagination"), ["rework-guides", "2026-02-01-add-guides"]);
   const child = await readSpec(FIXTURE, "contracts/pagination/streaming-search");
   assert.deepEqual(
     child?.history.map((h) => [h.slug, h.status]),

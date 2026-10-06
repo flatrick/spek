@@ -8,7 +8,7 @@ import { jjCurrentChangeSlugs } from "./jj-workspaces.js";
 import { discoverArtifacts } from "./artifact-discovery.js";
 import { countArtifacts, changeDirMtime } from "./artifact-files.js";
 import { discoverSpecFiles, resolveSpecFile } from "./spec-files.js";
-import { isSafeChangeSlug } from "./spec-topic.js";
+import { compareCodeUnits, isSafeChangeSlug } from "./spec-topic.js";
 import {
   cliDivergence,
   committedDivergedSlugs,
@@ -172,6 +172,7 @@ export async function scanOpenSpec(repoDir: string): Promise<ScanResult> {
     topic,
     path: file,
     historyCount: 0,
+    historyChanges: [],
   }));
 
   // 取得 git timestamps
@@ -200,19 +201,22 @@ export async function scanOpenSpec(repoDir: string): Promise<ScanResult> {
     })
     .sort(sortByTimestamp);
 
-  // How many changes reference each spec. Each change's delta tree is walked once, not once per spec.
+  // Which changes reference each spec. Each change's delta tree is walked once, not once per spec.
   const allChangeDirs = [
-    ...safeReadDir(changesDir).filter((n) => n !== "archive").map((n) => path.join(changesDir, n)),
-    ...safeReadDir(archiveDir).map((n) => path.join(archiveDir, n)),
+    ...safeReadDir(changesDir).filter((n) => n !== "archive"),
+    ...safeReadDir(archiveDir).map((n) => `archive/${n}`),
   ];
-  const historyCounts = new Map<string, number>();
-  for (const dir of allChangeDirs) {
-    for (const { topic } of discoverSpecFiles(path.join(dir, "specs"))) {
-      historyCounts.set(topic, (historyCounts.get(topic) ?? 0) + 1);
+  const historyChanges = new Map<string, string[]>();
+  for (const rel of allChangeDirs) {
+    for (const { topic } of discoverSpecFiles(path.join(changesDir, ...rel.split("/"), "specs"))) {
+      const list = historyChanges.get(topic);
+      if (list) list.push(rel);
+      else historyChanges.set(topic, [rel]);
     }
   }
   for (const spec of specs) {
-    spec.historyCount = historyCounts.get(spec.topic) ?? 0;
+    spec.historyChanges = (historyChanges.get(spec.topic) ?? []).sort(compareCodeUnits);
+    spec.historyCount = spec.historyChanges.length;
   }
 
   return { specs, activeChanges, archivedChanges, defaultSchema };

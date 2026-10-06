@@ -106,6 +106,7 @@ const EXPECTED = JSON.parse(readFileSync(path.join(FIXTURE, "expected.json"), "u
   topics: string[];
   edges: [string, string][];
   searchSpecTopics: Record<string, string[]>;
+  historyChanges: Record<string, string[]>;
 };
 
 test("the web host serves the shared nested answers: topics, search, history, graph", async () => {
@@ -115,7 +116,11 @@ test("the web host serves the shared nested answers: topics, search, history, gr
     const results = await adapter.search(query);
     assert.deepEqual(results.filter((r) => r.type === "spec").map((r) => r.topic), topics, query);
   }
-  assert.deepEqual((await adapter.getSpec("guides/pagination")).relatedChanges, ["2026-02-01-add-guides"]);
+  assert.deepEqual(
+    Object.fromEntries((await adapter.getSpecs()).map((s) => [s.topic, s.historyChanges])),
+    EXPECTED.historyChanges,
+  );
+  assert.deepEqual((await adapter.getSpec("guides/pagination")).relatedChanges, ["rework-guides", "2026-02-01-add-guides"]);
   // Aggregation off: the fixture sits inside this repository's checkout, whose worktrees are not its own.
   const graph = await adapter.getGraphData(false);
   assert.deepEqual(graph.edges.map((e) => [e.source, e.target]).sort(), EXPECTED.edges);

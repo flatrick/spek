@@ -4,6 +4,12 @@ export interface SpecInfo {
   topic: string;
   path: string;
   historyCount: number;
+  /**
+   * Each change with a delta for exactly this topic, as its directory relative to `openspec/changes/`
+   * (`<slug>` or `archive/<slug>`), in code-unit order. Comparable across specs, so the distinct
+   * changes of several specs can be counted; `historyCount` is its length.
+   */
+  historyChanges: string[];
 }
 
 export interface HistoryEntry {

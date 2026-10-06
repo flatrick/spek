@@ -6,12 +6,17 @@ import { MemoryRouter } from "react-router-dom";
 import type { SpecInfo } from "@spekjs/core";
 import { SpecTree } from "./SpecTree";
 
-const spec = (topic: string, historyCount = 0): SpecInfo => ({ topic, path: `/r/${topic}/spec.md`, historyCount });
+const spec = (topic: string, historyChanges: string[] = []): SpecInfo => ({
+  topic,
+  path: `/r/${topic}/spec.md`,
+  historyCount: historyChanges.length,
+  historyChanges,
+});
 
 const SPECS = [
   spec("auth"),
-  spec("contracts/pagination", 1),
-  spec("contracts/pagination/streaming-search", 2),
+  spec("contracts/pagination", ["add-pagination"]),
+  spec("contracts/pagination/streaming-search", ["add-pagination", "add-streaming-search"]),
   spec("guides/pagination"),
 ];
 

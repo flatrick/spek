@@ -4,7 +4,7 @@ import type { Heading, SpecInfo } from "@spekjs/core";
 import { buildSpecTree } from "@spekjs/core/spec-topic";
 import { headingRoute, specFolderChildren } from "./spec-tree";
 
-const spec = (topic: string): SpecInfo => ({ topic, path: `/r/${topic}/spec.md`, historyCount: 0 });
+const spec = (topic: string): SpecInfo => ({ topic, path: `/r/${topic}/spec.md`, historyCount: 0, historyChanges: [] });
 const HEADINGS: Heading[] = [
   { level: 2, text: "Requirements", slug: "requirements" },
   { level: 3, text: "Requirement: Stream", slug: "requirement-stream" },
