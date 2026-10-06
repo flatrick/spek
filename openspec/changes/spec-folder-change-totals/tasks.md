@@ -3,7 +3,7 @@
 ## 1. Core
 
 - [x] 1.1 Add `historyChanges` to `SpecInfo`, filled by `scanOpenSpec` from the walk that already counts `historyCount` (relative change directory, code-unit order); verify scanner tests over `test-fixtures/nested-specs/` (extended with `rework-guides`, one change across two sibling specs) cover active and archived identities and a change shared by two specs, and that `historyCount` equals its length. Run `npm run build:core` before any web test.
-- [ ] 1.2 Add a pure `specChangeTotals` on the `@spekjs/core/spec-topic` subpath; verify tests for a spec-bearing parent, a grouping-only folder, a change shared across siblings counting once, and a leaf.
+- [x] 1.2 Add a pure `specChangeTotals` on the `@spekjs/core/spec-topic` subpath; verify tests for a spec-bearing parent, a grouping-only folder, a change shared across siblings counting once, and a leaf.
 
 ## 2. Hosts
 

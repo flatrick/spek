@@ -95,6 +95,25 @@ export function buildSpecTree<T extends { topic: string }>(specs: readonly T[]):
 }
 
 /**
+ * Each node's distinct related changes, its own spec's and every descendant's, keyed by node path. A
+ * change touching several specs below one folder counts once there, which is why this takes the changes'
+ * identities rather than summing `historyCount`.
+ */
+export function specChangeTotals<T extends { historyChanges: readonly string[] }>(
+  nodes: readonly SpecTreeNode<T>[],
+): Map<string, number> {
+  const totals = new Map<string, number>();
+  const collect = (node: SpecTreeNode<T>): Set<string> => {
+    const changes = new Set(node.spec?.historyChanges);
+    for (const child of node.children) for (const change of collect(child)) changes.add(change);
+    totals.set(node.path, changes.size);
+    return changes;
+  };
+  for (const node of nodes) collect(node);
+  return totals;
+}
+
+/**
  * The tree restricted to specs passing `keep`, with every ancestor needed to reach them. An ancestor
  * that holds a spec of its own keeps it, so it stays openable even when only a child matched.
  */

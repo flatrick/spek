@@ -7,6 +7,7 @@ import {
   isSafeChangeSlug,
   isSafeSpecTopic,
   pruneSpecTree,
+  specChangeTotals,
   specRoute,
   specTopicLabel,
   type SpecTreeNode,
@@ -95,4 +96,43 @@ test("pruning keeps matches and their ancestors, and an ancestor keeps its own s
 test("the subpath stays reachable from a browser bundle", () => {
   const source = readFileSync(fileURLToPath(new URL("./spec-topic.ts", import.meta.url)), "utf-8");
   assert.ok(!/^\s*import\s/m.test(source), "spec-topic.ts must import nothing");
+});
+
+const withChanges = (topic: string, historyChanges: string[]) => ({ topic, historyChanges });
+
+test("change totals: a spec-bearing parent counts its own changes and every descendant's", () => {
+  const totals = specChangeTotals(
+    buildSpecTree([
+      withChanges("auth", ["a1", "a2", "a3"]),
+      withChanges("auth/oauth", ["o1", "o2", "o3", "o4", "o5"]),
+      withChanges("auth/session", ["s1", "s2", "s3", "s4"]),
+    ]),
+  );
+  assert.equal(totals.get("auth"), 12);
+  assert.equal(totals.get("auth/oauth"), 5);
+});
+
+test("change totals: a grouping-only folder totals the specs below it, at any depth", () => {
+  const totals = specChangeTotals(
+    buildSpecTree([withChanges("contracts/pagination", ["p1"]), withChanges("contracts/x/y", ["y1", "y2"])]),
+  );
+  assert.equal(totals.get("contracts"), 3);
+  assert.equal(totals.get("contracts/x"), 2);
+});
+
+test("change totals: a change touching several specs in a folder counts once", () => {
+  const totals = specChangeTotals(
+    buildSpecTree([
+      withChanges("auth", ["rework"]),
+      withChanges("auth/oauth", ["rework", "archive/2026-01-02-init"]),
+      withChanges("auth/session", ["rework"]),
+    ]),
+  );
+  assert.equal(totals.get("auth"), 2);
+});
+
+test("change totals: a leaf's total is its own count, and an empty folder's is zero", () => {
+  const totals = specChangeTotals(buildSpecTree([withChanges("auth", ["a1"]), withChanges("misc/none", [])]));
+  assert.equal(totals.get("auth"), 1);
+  assert.equal(totals.get("misc"), 0);
 });
