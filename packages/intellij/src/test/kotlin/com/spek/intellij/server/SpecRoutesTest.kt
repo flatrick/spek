@@ -23,6 +23,12 @@ class SpecRoutesTest {
     }
 
     @Test
+    fun `the list carries each spec's related change directories`() {
+        val body = assertIs<SpekHttpRequestHandler.ApiResult.Json>(route("openspec/specs")).body
+        assertTrue(body.contains("\"historyChanges\":[\"archive/2026-02-01-add-guides\",\"rework-guides\"]"), body)
+    }
+
+    @Test
     fun `topic selects nested detail and topic plus at selects its version`() {
         val detail = assertIs<SpekHttpRequestHandler.ApiResult.Json>(route("openspec/specs", "topic" to "contracts/pagination"))
         assertTrue(detail.body.contains("\"relatedChanges\":[\"2026-01-10-add-pagination\"]"), detail.body)

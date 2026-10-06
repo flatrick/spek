@@ -33,6 +33,8 @@ data class SpecInfo(
     val topic: String,
     val path: String,
     val historyCount: Int,
+    /** Each change with a delta for exactly this topic, as its directory relative to `openspec/changes/`, in code-unit order. */
+    val historyChanges: List<String>,
 )
 
 @Serializable

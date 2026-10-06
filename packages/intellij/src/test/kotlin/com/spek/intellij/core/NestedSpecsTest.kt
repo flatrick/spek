@@ -43,11 +43,19 @@ class NestedSpecsTest {
     }
 
     @Test
+    fun `each spec names its changes by directory, as the TypeScript scanner does`() {
+        val changes = expected["historyChanges"]!!.jsonObject.mapValues { (_, v) -> v.jsonArray.map { it.jsonPrimitive.content } }
+        val specs = OpenSpecScanner.scan(project).specs
+        assertEquals(changes, specs.associate { it.topic to it.historyChanges })
+        for (spec in specs) assertEquals(spec.historyChanges.size, spec.historyCount, spec.topic)
+    }
+
+    @Test
     fun `parent, child, and same-basename histories stay separate`() {
         fun history(topic: String) = SpecReader.read(project, topic)!!.relatedChanges
         assertEquals(listOf("2026-01-10-add-pagination"), history("contracts/pagination"))
         assertEquals(listOf("add-streaming-search"), history("contracts/pagination/streaming-search"))
-        assertEquals(listOf("2026-02-01-add-guides"), history("guides/pagination"))
+        assertEquals(listOf("rework-guides", "2026-02-01-add-guides"), history("guides/pagination"))
     }
 
     @Test

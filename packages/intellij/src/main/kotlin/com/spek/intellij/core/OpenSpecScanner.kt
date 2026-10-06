@@ -20,7 +20,7 @@ object OpenSpecScanner {
         val defaultSchema = readRepoSchema(projectPath)
 
         val specs = SpecFiles.discover(specsDir)
-            .map { SpecInfo(topic = it.topic, path = it.file.absolutePath, historyCount = 0) }
+            .map { SpecInfo(topic = it.topic, path = it.file.absolutePath, historyCount = 0, historyChanges = emptyList()) }
 
         val activeChanges = safeListDirs(changesDir)
             .filter { it.name != "archive" }
@@ -31,16 +31,18 @@ object OpenSpecScanner {
             .map { scanChangeDir(it, "archived", defaultSchema) }
             .sortedByDescending { it.timestamp ?: it.date ?: "" }
 
-        // How many changes reference each spec. Each change's delta tree is walked once, not once per spec.
-        val allChangeDirs = safeListDirs(changesDir).filter { it.name != "archive" } +
-            safeListDirs(archiveDir)
-        val historyCounts = allChangeDirs
-            .flatMap { dir -> SpecFiles.discover(File(dir, "specs")).map { it.topic } }
-            .groupingBy { it }
-            .eachCount()
+        // Which changes reference each spec. Each change's delta tree is walked once, not once per spec.
+        val allChangeDirs = safeListDirs(changesDir).filter { it.name != "archive" }.map { it.name to it } +
+            safeListDirs(archiveDir).map { "archive/${it.name}" to it }
+        val historyChanges = allChangeDirs
+            .flatMap { (rel, dir) -> SpecFiles.discover(File(dir, "specs")).map { it.topic to rel } }
+            .groupBy({ it.first }, { it.second })
 
         return ScanResult(
-            specs.map { it.copy(historyCount = historyCounts[it.topic] ?: 0) },
+            specs.map { spec ->
+                val changes = historyChanges[spec.topic].orEmpty().sorted()
+                spec.copy(historyCount = changes.size, historyChanges = changes)
+            },
             activeChanges,
             archivedChanges,
             defaultSchema,

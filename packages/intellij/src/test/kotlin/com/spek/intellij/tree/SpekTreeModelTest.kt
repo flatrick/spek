@@ -9,7 +9,7 @@ import kotlin.test.assertNull
 
 class SpekTreeModelTest {
 
-    private fun spec(topic: String) = SpecInfo(topic, "/r/$topic/spec.md", 0)
+    private fun spec(topic: String) = SpecInfo(topic, "/r/$topic/spec.md", 0, emptyList())
 
     private fun folders(node: DefaultMutableTreeNode): List<SpekTreeNode.SpecFolder> =
         node.children().toList().map { (it as DefaultMutableTreeNode).userObject as SpekTreeNode.SpecFolder }

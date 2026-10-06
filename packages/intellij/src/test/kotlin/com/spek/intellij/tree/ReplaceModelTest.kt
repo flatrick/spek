@@ -13,7 +13,7 @@ class ReplaceModelTest {
 
     private fun model(vararg topics: String): DefaultTreeModel {
         val specs = DefaultMutableTreeNode(SpekTreeNode.SpecsRoot(emptyList()))
-        SpekTreeModel.addSpecFolders(specs, topics.map { SpecInfo(it, "/r/$it/spec.md", 0) })
+        SpekTreeModel.addSpecFolders(specs, topics.map { SpecInfo(it, "/r/$it/spec.md", 0, emptyList()) })
         return DefaultTreeModel(DefaultMutableTreeNode("spek").apply { add(specs) })
     }
 

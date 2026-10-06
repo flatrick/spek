@@ -8,7 +8,7 @@
 ## 2. Hosts
 
 - [x] 2.1 Show `N changes · M total` on every Specs-page item with children (`—` for grouping-only folders), computing totals from the unfiltered tree; verify `SpecTree` tests for both item kinds, an unchanged leaf, and a filter that leaves the total unchanged.
-- [ ] 2.2 Mirror `historyChanges` in the Kotlin scanner and specs list response; verify a Kotlin test against the shared fixture asserts the same values and order as the TypeScript scanner.
+- [x] 2.2 Mirror `historyChanges` in the Kotlin scanner and specs list response; verify a Kotlin test against the shared fixture asserts the same values and order as the TypeScript scanner.
 
 ## 3. Verification
 
