@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import type { SpecInfo } from "@spekjs/core";
-import { buildSpecTree, pruneSpecTree, specRoute, type SpecTreeNode } from "@spekjs/core/spec-topic";
+import { buildSpecTree, pruneSpecTree, specChangeTotals, specRoute, type SpecTreeNode } from "@spekjs/core/spec-topic";
 
 interface SpecTreeProps {
   specs: SpecInfo[];
@@ -16,11 +16,13 @@ interface SpecTreeProps {
  */
 export function SpecTree({ specs, filter }: SpecTreeProps) {
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+  const tree = useMemo(() => buildSpecTree(specs), [specs]);
+  // Totals come from the whole tree: a folder's total describes the folder, not what the filter shows.
+  const totals = useMemo(() => folderTotals(tree), [tree]);
   const nodes = useMemo(() => {
-    const tree = buildSpecTree(specs);
     const needle = filter.toLowerCase();
     return needle ? pruneSpecTree(tree, (s) => s.topic.toLowerCase().includes(needle)) : tree;
-  }, [specs, filter]);
+  }, [tree, filter]);
 
   if (nodes.length === 0) return <p className="text-text-muted text-sm">No specs found</p>;
 
@@ -36,11 +38,34 @@ export function SpecTree({ specs, filter }: SpecTreeProps) {
       return next;
     });
 
-  return <SpecTreeLevel nodes={nodes} isOpen={isOpen} toggle={toggle} filtering={filtering} />;
+  return <SpecTreeLevel nodes={nodes} totals={totals} isOpen={isOpen} toggle={toggle} filtering={filtering} />;
 }
 
-function SpecTreeLevel({ nodes, isOpen, toggle, filtering }: {
+/** Each path that has sub-levels, mapped to its distinct related changes. */
+function folderTotals(tree: SpecTreeNode<SpecInfo>[]): ReadonlyMap<string, number> {
+  const all = specChangeTotals(tree);
+  const totals = new Map<string, number>();
+  const visit = (node: SpecTreeNode<SpecInfo>) => {
+    if (node.children.length === 0) return;
+    totals.set(node.path, all.get(node.path) ?? 0);
+    node.children.forEach(visit);
+  };
+  tree.forEach(visit);
+  return totals;
+}
+
+const changeCount = (n: number) => `${n} ${n === 1 ? "change" : "changes"}`;
+
+/** `1 change · 4 total` on a node with sub-levels (`—` when it holds no spec), the own count on a leaf. */
+function countLabel(node: SpecTreeNode<SpecInfo>, total: number | undefined): string | null {
+  const own = node.spec ? node.spec.historyCount : null;
+  if (total === undefined) return own ? changeCount(own) : null;
+  return `${own === null ? "—" : changeCount(own)} · ${total} total`;
+}
+
+function SpecTreeLevel({ nodes, totals, isOpen, toggle, filtering }: {
   nodes: SpecTreeNode<SpecInfo>[];
+  totals: ReadonlyMap<string, number>;
   isOpen: (path: string) => boolean;
   toggle: (path: string) => void;
   filtering: boolean;
@@ -50,6 +75,7 @@ function SpecTreeLevel({ nodes, isOpen, toggle, filtering }: {
       {nodes.map((node) => {
         const open = isOpen(node.path);
         const hasChildren = node.children.length > 0;
+        const count = countLabel(node, totals.get(node.path));
         return (
           <li key={node.path}>
             <div className="flex items-center gap-2 px-3 py-2 bg-bg-secondary border border-border rounded hover:border-accent transition-colors">
@@ -76,15 +102,11 @@ function SpecTreeLevel({ nodes, isOpen, toggle, filtering }: {
                   {node.name}/
                 </span>
               )}
-              {node.spec && node.spec.historyCount > 0 && (
-                <span className="text-text-muted text-xs">
-                  {node.spec.historyCount} {node.spec.historyCount === 1 ? "change" : "changes"}
-                </span>
-              )}
+              {count && <span className="text-text-muted text-xs">{count}</span>}
             </div>
             {hasChildren && open && (
               <div className="pl-6 mt-1">
-                <SpecTreeLevel nodes={node.children} isOpen={isOpen} toggle={toggle} filtering={filtering} />
+                <SpecTreeLevel nodes={node.children} totals={totals} isOpen={isOpen} toggle={toggle} filtering={filtering} />
               </div>
             )}
           </li>

@@ -60,9 +60,30 @@ test("siblings order per segment by code unit", () => {
   assert.deepEqual(links(html), ["/specs/a", "/specs/a/c", "/specs/a-b", "/specs/ab"]);
 });
 
-test("history counts remain on spec items", () => {
-  assert.match(render(), />2 changes</);
-  assert.match(render(), />1 change</);
+test("a leaf spec shows only its own count", () => {
+  assert.match(render(), /streaming-search<\/a><span[^>]*>2 changes<\/span>/);
+});
+
+test("a spec-bearing parent shows its own count and its folder's distinct total", () => {
+  // The child's two changes include the parent's one, so the total is 2, not 3.
+  assert.match(render(), /href="\/specs\/contracts\/pagination"[^>]*>pagination<\/a><span[^>]*>1 change · 2 total<\/span>/);
+});
+
+test("a grouping-only folder shows a total and no count of its own, even a zero one", () => {
+  assert.match(render(), /contracts\/<\/span><span[^>]*>— · 2 total<\/span>/);
+  assert.match(render(), /guides\/<\/span><span[^>]*>— · 0 total<\/span>/);
+});
+
+test("a parent with no changes of its own still shows its own count beside the total", () => {
+  assert.match(render("", [spec("a"), spec("a/b", ["c1"])]), /href="\/specs\/a"[^>]*>a<\/a><span[^>]*>0 changes · 1 total<\/span>/);
+});
+
+test("a filter does not shrink a folder's total", () => {
+  const specs = [...SPECS, spec("contracts/sorting", ["add-sorting"])];
+  assert.match(render("", specs), /contracts\/<\/span><span[^>]*>— · 3 total<\/span>/);
+  const filtered = render("streaming", specs);
+  assert.ok(!links(filtered).includes("/specs/contracts/sorting"));
+  assert.match(filtered, /contracts\/<\/span><span[^>]*>— · 3 total<\/span>/);
 });
 
 test("while filtering, the toggles are inert, so no collapse is recorded to surface later", () => {
