@@ -3,6 +3,7 @@ import remarkGfm from "remark-gfm";
 import { Link } from "react-router-dom";
 import { type ReactNode, createContext, useContext } from "react";
 import { slugifyHeading, specHeadingLabel } from "@spekjs/core/headings";
+import { specRoute } from "@spekjs/core/spec-topic";
 import { rehypeHighlightNarrow } from "../utils/highlight";
 import {
   rehypeSpekFoldSections,
@@ -416,7 +417,7 @@ export function MarkdownRenderer({ content, specTopics, idPrefix, fold, specShap
             if (specTopics?.includes(text)) {
               return (
                 <Link
-                  to={`/specs/${text}`}
+                  to={specRoute(text)}
                   className="bg-bg-tertiary text-code-text hover:text-accent-hover px-1.5 py-0.5 rounded text-sm underline decoration-dotted transition-colors"
                 >
                   {text}

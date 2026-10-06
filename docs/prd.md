@@ -58,7 +58,7 @@ change in parallel.
 {repo}/openspec/
 ├── config.yaml                     # repo default schema (e.g. schema: spec-driven)
 ├── specs/
-│   └── {topic}/spec.md             # BDD-format capability spec (WHEN / THEN / AND / MUST)
+│   └── {topic}/spec.md             # BDD-format capability spec (WHEN / THEN / AND / MUST); {topic} may nest
 └── changes/
     ├── archive/
     │   └── {YYYY-MM-DD-desc}/       # archived change
@@ -78,6 +78,9 @@ Key properties spek relies on:
   `specs`). A `data` artifact renders as a syntax-highlighted code block. This is what lets **custom
   OpenSpec schemas** render their own artifacts as tabs without spek knowing them in advance — including
   schemas whose artifacts are not Markdown, such as `event-driven`'s `asyncapi.yaml`.
+- **A spec topic is its directory path relative to `specs/`.**
+  `specs/contracts/pagination/spec.md` is topic `contracts/pagination`, distinct from a child `contracts/pagination/streaming-search` and from `guides/pagination`.
+  Discovery follows OpenSpec's own rule, so spek lists exactly the capabilities OpenSpec validates and archives; the same applies to a change's delta `specs/` tree.
 - **Schema-aware.** A change's schema is read from `.openspec.yaml` (`schema:`), falling back to
   `openspec/config.yaml`. The schema badge is hidden when a change matches its worktree's default.
 - **Default sort is file mtime (newest first)**, so an artifact being actively edited (e.g.
@@ -138,8 +141,10 @@ GET /api/fs/browse?path=...                       # directory browse (repo picke
 GET /api/fs/detect?path=...                        # detect an openspec/ dir
 GET /api/openspec/overview?dir=...&aggregate=      # overview stats
 GET /api/openspec/specs?dir=...                    # spec list
-GET /api/openspec/specs/:topic?dir=...             # single spec
-GET /api/openspec/specs/:topic/at/:slug?dir=...    # spec content at a change (diff)
+GET /api/openspec/specs?dir=...&topic=...          # single spec (full, possibly nested topic)
+GET /api/openspec/specs?dir=...&topic=...&at=...   # spec content at a change (diff)
+GET /api/openspec/specs/:topic?dir=...             # single spec (legacy single-segment route)
+GET /api/openspec/specs/:topic/at/:slug?dir=...    # spec content at a change (legacy route)
 GET /api/openspec/changes?dir=...&aggregate=       # change list
 GET /api/openspec/changes/:slug?dir=...&wt=        # single change (wt = source worktree)
 GET /api/openspec/graph?dir=...&aggregate=         # spec↔change graph data
