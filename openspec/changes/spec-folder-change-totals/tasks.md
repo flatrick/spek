@@ -12,5 +12,5 @@
 
 ## 3. Verification
 
-- [ ] 3.1 Use the `verify-vscode` skill to check the Specs page and the spek sidebar in a VS Code Extension Development Host against the shared fixture.
-- [ ] 3.2 Run `npm run build`, `build:intellij`, `type-check`, `lint`, `npm test`, the Gradle `test` task from `packages/intellij`, and `openspec validate spec-folder-change-totals --strict`.
+- [x] 3.1 Use the `verify-vscode` skill to check the Specs page and the spek sidebar in a VS Code Extension Development Host against the shared fixture.
+- [x] 3.2 Run `npm run build`, `build:intellij`, `type-check`, `lint`, `npm test`, the Gradle `test` task from `packages/intellij`, and `openspec validate spec-folder-change-totals --strict`.
