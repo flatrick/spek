@@ -155,9 +155,10 @@ test("a nested delta's mtime is the change's mtime", () => {
     "changes/c/specs/contracts/pagination/spec.md": "x",
   });
   const change = path.join(repo, "openspec", "changes", "c");
-  const future = new Date(Date.now() + 86_400_000);
+  // Whole seconds: a millisecond time comes back through the float `mtimeMs` as e.g. `…546.999`.
+  const future = Math.floor(Date.now() / 1000) + 86_400;
   fs.utimesSync(path.join(change, "specs", "contracts", "pagination", "spec.md"), future, future);
-  assert.equal(changeDirMtime(change), future.getTime());
+  assert.equal(changeDirMtime(change), future * 1000);
   assert.equal(countArtifacts(change), 2);
 });
 
