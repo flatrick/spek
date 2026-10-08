@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.19.1
+
+- **Security: the plugin's endpoints refuse other local pages.** The IDE already refused other sites, but a page served on another port of your machine could read the plugin's API, because the IDE's built-in server allows any local origin. Only the plugin's own pages (the tool window and the external-browser view) are served now ([#69](https://github.com/spekhq/spek/pull/69))
+
 ## 1.19.0
 
 **Highlight: specs grouped into folders are visible.** OpenSpec accepts a `spec.md` at any depth under `openspec/specs/` — `specs/contracts/pagination/spec.md` is a valid capability — but spek only looked one level down, so a repository that groups its capabilities into folders showed nothing for them. Thanks to [@flatrick](https://github.com/flatrick) (Patrik) ([#61](https://github.com/spekhq/spek/pull/61))
