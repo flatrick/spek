@@ -506,6 +506,31 @@ GET /api/openspec/search?dir=...&q=...              # full-text search
   before it reaches the CLI *or* the filesystem, and the same rule is stated in Kotlin with `\A`/`\z`
   anchors (Java's `$` also matches before a trailing newline, so `^…$` would accept `"spec-driven\n"`
   on that side only). The property is unchanged; only the mechanism differs for that one path
+- **Who may ask is a second, separate property: only the local app** (`web-api-access`). Containment limits
+  *what* a request can read; `/api/fs/browse` still lists any directory (the repo picker needs it), so the
+  server must also refuse *who* should not ask. The Express API listens on `127.0.0.1:3001` only, and a
+  middleware first in the chain (`server/guard.ts`) refuses with 403 a `Host` that is not a loopback name plus
+  the bound port (DNS rebinding), an `Origin` other than the app's dev origin (`http://{localhost,127.0.0.1,[::1]}:5173`,
+  so another local port is refused too), and a `Sec-Fetch-Site` other than `same-origin` / `none` (cross-site
+  `no-cors` requests carry no `Origin`). There is **no CORS** — the SPA reaches the API through Vite's
+  same-origin `/api` proxy — and **refusing is the control, not withholding headers**: a refused request must
+  never run, because even `GET` routes spawn `git` / the `openspec` CLI and start watchers in the caller's
+  `dir`. Addresses live in one module (`server/address.ts`) read by both the server and `vite.config.ts`.
+  Three things that are not the obvious shape:
+  - **The proxy rewrites `Host`** (`changeOrigin`), so the API's `Host` rule sees nothing of a proxied request.
+    Network exposure through the dev server is prevented only by Vite listening on loopback — which is why
+    `server.host` is stated in `vite.config.ts` rather than left to Vite's default — and rebinding against
+    it by Vite's own `allowedHosts`.
+  - **`strictPort` is load-bearing**: the API admits exactly one app origin, so a Vite that moved to 5174
+    would have its `POST /resync` refused — silently, since the refresh invariant swallows resync failures.
+    `npm run dev` runs under `concurrently --kill-others-on-fail` so a busy port ends the command.
+  - **IntelliJ cannot withhold a CORS header — the platform writes it.** The built-in server's pipeline
+    installs Netty's `CorsHandler` (`forAnyOrigin().allowCredentials()`), echoing every request's `Origin`
+    back, and the platform's default `isAccessible` compares host names without ports. So
+    `SpekHttpRequestHandler` overrides `isAccessible` to narrow it — `Origin`, when present, must be
+    `http://` + `Host`; `Sec-Fetch-Site` must be `same-origin` / `none` — and a refused request falls through
+    to the platform's 404 (still carrying the echoed header, with no data). Read from 2023.3.8 by
+    disassembly and confirmed against a `runIde` sandbox; never *widen* `super.isAccessible`
 - **BDD highlighting**: WHEN/GIVEN (blue), THEN (green), AND (gray), MUST/SHALL (red), and a badge per
   delta operation — ADDED orange, MODIFIED blue, REMOVED purple, RENAMED pink. **All four operations are
   marked**; two of them went unhandled for a long time because the only occurrences in-repo are section
