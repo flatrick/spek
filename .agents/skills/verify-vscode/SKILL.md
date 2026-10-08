@@ -2,7 +2,7 @@
 name: verify-vscode
 description: Verify spek inside a real VS Code — desktop, or browser-hosted through `code serve-web` — covering the webview panel (Specs, Changes, Graph pages) and the native spek sidebar trees, by launching an isolated instance and driving it over the Chrome DevTools Protocol. Use after changing anything the VS Code panel or sidebar renders, when a task says "check it in a VS Code webview", or for bugs that only reproduce inside the host (host-injected styles, webview link handling, sidebar-to-panel navigation and heading jumps, keyboard shortcuts, worktree aggregation, live reload, light theme). Link clicks forwarded to the host (issue 59) show only in the browser-hosted mode.
 license: MIT
-compatibility: Verified on Linux (X11) with VS Code 1.140, Node 24 and Chrome; macOS and Windows untested. Needs the `code` CLI and Node 22+; desktop mode needs a display, browser-hosted mode needs Chrome or Chromium and network access. No browser-automation tool needed.
+compatibility: Verified on Linux with VS Code 1.140 (X11, Node 24) and 1.141 (GNOME on Wayland, VS Code on native Wayland, Node 26), with Chrome; macOS and Windows untested. Needs the `code` CLI and Node 22+; desktop mode needs a display, browser-hosted mode needs Chrome or Chromium and network access. No browser-automation tool needed.
 metadata:
   author: spek
   version: "1.1"
@@ -41,11 +41,14 @@ cdp() { node "$SKILL/cdp.mjs" "$PORT" "$@"; }
 ```
 
 Use your session scratchpad instead of `mktemp -d` when you have one.
-Use a free `PORT`: if something already answers `curl -s "http://127.0.0.1:$PORT/json/version"`, every later step drives that instead, and closing closes it (`cdp.mjs` checks only that a page there renders a VS Code workbench; read from its code).
+Use a free `PORT`: `ss -ltn "sport = :$PORT" | tail -n +2` must print nothing.
+If something already answers there, every later step drives that instead, and closing closes it (`cdp.mjs` checks only that a page there renders a VS Code workbench; read from its code).
+If something listens but never answers, VS Code cannot bind the port, and a probe without a timeout (plain `curl`) hangs; see the close step of [resources/desktop.md](resources/desktop.md) for how that happens.
 
 ## 2. Build what the host will load
 
 ```bash
+npm install            # a fresh checkout or worktree has no node_modules
 npm run build:webview && npm run build:vscode
 ```
 
@@ -96,7 +99,7 @@ cdp click-app '[aria-label="Aggregation scope"] button[title^="Show only"]'
 
 `app` evaluates one expression in the spek app's document, bound as `d`.
 The webview target's own document is only VS Code's host frame; the app lives in its inner iframe, which the driver reaches for you.
-The expression must return a value — a bare `click()` returns `undefined`, which reads as "no app found".
+An expression that comes out `null` or `undefined` prints that value, and means a missing element, not a missing app; "no webview held the spek app" means the panel is not open.
 
 Read every row of the Specs tree, one line each:
 
@@ -189,11 +192,13 @@ Then, on the Changes page:
 
 ```bash
 cdp app 'JSON.stringify([...d.querySelectorAll("[aria-label=\"Aggregation scope\"] button")].map(b => b.innerText + (b.getAttribute("aria-pressed") === "true" ? "*" : "")))'
+cdp app 'JSON.stringify([...d.querySelectorAll("a[href^=\"/changes/\"]")].map(a => a.getAttribute("href").split("?")[0]))'
 cdp click-app '[aria-label="Aggregation scope"] button[title^="Show only"]'
 cat "$RUN/ws/.vscode/settings.json"
 ```
 
-On both hosts the control showed `Current dir` / `Worktrees*` and the list held `worktree-only-change`.
+Check the list by its links: a card displays the slug with spaces (`worktree only change`), so searching the page text for `worktree-only-change` finds nothing even when it is listed.
+On both hosts the control showed `Current dir` / `Worktrees*` and the links held `/changes/worktree-only-change`.
 Clicking "Current dir" wrote `"spek.aggregateWorktrees": false` (and `"spek.aggregateJjWorkspaces": false`) into the workspace's `.vscode/settings.json` and dropped that change from the list; writing `true` back into the file from the shell flipped the control back and restored it within four seconds (measured 2026-10-06).
 The jj option appears only when a jj workspace is detected; this recipe does not cover it.
 

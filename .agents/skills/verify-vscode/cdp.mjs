@@ -18,6 +18,7 @@
 // Expressions should be one expression (wrap statements in an IIFE) and return something serialisable.
 // The click commands send real mouse events (isTrusted), which is what VS Code's own listeners see from a user.
 import fs from "node:fs";
+import net from "node:net";
 
 const [port, step, arg] = process.argv.slice(2);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -38,13 +39,37 @@ function connect(wsUrl) {
     ws.onopen = resolve;
     ws.onerror = reject;
   });
+  const closed = new Promise((resolve) => ws.addEventListener("close", resolve));
   const send = (method, params = {}) =>
     new Promise((resolve) => {
       const i = ++id;
       pending.set(i, resolve);
       ws.send(JSON.stringify({ id: i, method, params }));
     });
-  return { ready, send, close: () => ws.close() };
+  return { ready, closed, send, close: () => ws.close() };
+}
+
+// Every HTTP request is bounded: a port can accept connections and never answer — on Ubuntu 20.04 (GNOME,
+// X11) a `dconf watch /system/proxy/` started beside the window inherited the DevTools socket and outlived it.
+const get = (path) => fetch(`${base}${path}`, { signal: AbortSignal.timeout(2000) });
+const silent = (e) => e.name === "TimeoutError";
+// Whether anything listens, asked with a bare TCP connect rather than HTTP.
+const listening = () =>
+  new Promise((resolve) => {
+    const s = net.connect({ port: Number(port), host: "127.0.0.1" });
+    const done = (v) => (s.destroy(), resolve(v));
+    s.once("connect", () => done(true));
+    s.once("error", () => done(false));
+  });
+// free: nothing listens; answering: an HTTP reply came back; occupied: something listens and gave none in time.
+const portState = () => get("/json/version").then(() => "answering", async () => ((await listening()) ? "occupied" : "free"));
+const leakHint = `port ${port} accepts connections and never answers, as when a process outside VS Code inherited the socket. Find the holder with \`ss -ltnp | grep :${port}\` and stop it.`;
+async function getJson(path) {
+  try {
+    return await (await get(path)).json();
+  } catch (e) {
+    fail(silent(e) ? leakHint : `nothing answers on port ${port}: is VS Code up, with its DevTools port there?`, 2);
+  }
 }
 
 async function evaluate(target, expression) {
@@ -63,18 +88,23 @@ const fail = (message, code = 1) => {
 };
 
 if (step === "close") {
-  const up = () => fetch(`${base}/json/version`).then(() => true, () => false);
-  const c = connect((await (await fetch(`${base}/json/version`)).json()).webSocketDebuggerUrl);
+  const c = connect((await getJson("/json/version")).webSocketDebuggerUrl);
   await c.ready;
   c.send("Browser.close");
+  // The browser connection dropping is the instance going away; the port is checked after, since a
+  // listener can outlive it and would break the next launch on this port.
+  await Promise.race([c.closed, sleep(30_000)]);
+  // A listener still there after the deadline is a leak; before it, it may be a slow shutdown.
   const deadline = Date.now() + 30_000;
-  while (Date.now() < deadline && (await up())) await sleep(500);
-  if (await up()) fail("still up after 30s");
+  let state;
+  while ((state = await portState()) !== "free" && Date.now() < deadline) await sleep(500);
+  if (state === "answering") fail("still answering after 30s");
+  if (state === "occupied") fail(`window closed; ${leakHint}`);
   console.log("closed");
   process.exit(0);
 }
 
-const targets = await (await fetch(`${base}/json/list`)).json();
+const targets = await getJson("/json/list");
 
 if (step === "targets") {
   for (const t of targets) console.log(t.type, "|", t.title.slice(0, 50), "|", t.url.slice(0, 120));
@@ -94,11 +124,12 @@ if (!page) fail("no workbench page: is VS Code up, with its DevTools port on " +
 
 // The webview target's own document is VS Code's host frame; the spek app is its inner iframe.
 async function inApp(expression) {
-  const wrapped = `(() => { const d = document.querySelector("iframe")?.contentDocument; if (!d) return undefined; return (${expression}); })()`;
+  // Boxed, so an expression yielding null or undefined still counts as having found the app.
+  const wrapped = `(() => { const d = document.querySelector("iframe")?.contentDocument; if (!d?.getElementById("root")) return undefined; return { v: (${expression}) }; })()`;
   for (const t of targets.filter((t) => t.type === "iframe")) {
     const r = await evaluate(t, wrapped);
     if (r.error) fail(r.error);
-    if (r.value !== undefined && r.value !== null) return { target: t, value: r.value };
+    if (r.value) return { target: t, value: r.value.v };
   }
   fail('no webview held the spek app: open the panel first (palette "spek: Open spek")');
 }

@@ -34,9 +34,13 @@ cdp targets
 cdp close
 ```
 
-This sends the DevTools `Browser.close` command to the instance serving `$PORT`, which shuts down exactly that window, and waits until the port stops answering.
+This sends the DevTools `Browser.close` command to the instance serving `$PORT`, which shuts down exactly that window, waits for its connection to drop, then waits up to 30 seconds for nothing to listen on the port.
 Do not kill it instead.
 The `code` launcher exits once the window is up, and the window's main process is reparented (parent PID 1), so the PID a script started is not the window's.
 A pattern kill (`pkill -f` on the profile path) also matches the window's GPU and utility processes, and in four runs the window survived the first SIGTERM three times; why was not established.
 (Both measured on VS Code 1.140, Linux, 2026-10-06.)
 A pattern kill can also match the shell running it, whose own command line holds the pattern: `pkill -f "serve-web --port 8123"` killed the shell that ran it (observed 2026-10-06).
+
+If it fails with "window closed; port … accepts connections and never answers", the window is gone but a process outside VS Code still held the DevTools socket after those 30 seconds, and the next launch on that port will fail.
+On Ubuntu 20.04 (GNOME on X11, VS Code 1.134) that was a `dconf watch /system/proxy/` started alongside the window and reparented to `systemd --user`; `ss -ltnp | grep :$PORT` named it, and stopping that one process freed the port (reported by another operator; it did not happen on GNOME Shell 51 on Arch, Wayland, VS Code 1.141, 2026-10-08).
+Before this check, `close` waited on that port with no timeout and never returned.
