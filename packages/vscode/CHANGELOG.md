@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.19.1
+
+No changes to the VS Code extension. This release fixes the web app's development server and the IntelliJ plugin; the extension runs no network server, so it was never exposed in this way.
+
 ## 1.19.0
 
 **Highlight: specs grouped into folders are visible.** OpenSpec accepts a `spec.md` at any depth under `openspec/specs/` — `specs/contracts/pagination/spec.md` is a valid capability — but spek only looked one level down, so a repository that groups its capabilities into folders showed nothing for them. Thanks to [@flatrick](https://github.com/flatrick) (Patrik) ([#61](https://github.com/spekhq/spek/pull/61))

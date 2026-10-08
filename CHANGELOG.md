@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.19.1
+
+**Security: spek's servers answer only spek's own pages.** ([#69](https://github.com/spekhq/spek/pull/69))
+
+- **Web: the API server is local-only.** While `npm run dev` ran, the API server listened on every network interface and let any web page read its responses, so another device on the same network, or any page open in your browser, could list directories on your machine and read OpenSpec content. It now listens on `127.0.0.1` only and refuses any request that is not from the app itself: another site, another port on `localhost`, or a host name pointed at your machine (DNS rebinding). The dev server on 5173 is loopback-only as well
+- **IntelliJ: the plugin's endpoints refuse other local pages.** The IDE already refused other sites, but a page served on another port of your machine could read the plugin's API, because the IDE's built-in server allows any local origin. Only the plugin's own pages (the tool window and the external-browser view) are served now
+- **Behaviour change**: the web app can no longer be opened from another machine (for example a phone on your LAN). `npm run dev` now stops with an error when port 5173 is taken, instead of moving to another port. One dev server can browse every worktree, so a second one is not needed
+
 ## 1.19.0
 
 **Highlight: specs grouped into folders are visible.** OpenSpec accepts a `spec.md` at any depth under `openspec/specs/` — `specs/contracts/pagination/spec.md` is a valid capability — but spek only looked one level down, so a repository that groups its capabilities into folders showed nothing for them. Thanks to [@flatrick](https://github.com/flatrick) (Patrik) ([#61](https://github.com/spekhq/spek/pull/61))
