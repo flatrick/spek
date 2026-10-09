@@ -132,13 +132,6 @@ The server SHALL implement a Kotlin-based OpenSpec scanner that reads the `opens
 - **WHEN** a request attempts to read files outside the `openspec/` directory
 - **THEN** the server SHALL reject the request
 
-### Requirement: CORS headers for JCEF
-The server SHALL include appropriate CORS headers to allow requests from the JCEF webview (which loads content from file:// or the built-in server).
-
-#### Scenario: CORS preflight
-- **WHEN** the JCEF webview sends a cross-origin request to the API
-- **THEN** the server SHALL respond with `Access-Control-Allow-Origin` headers permitting the request
-
 ### Requirement: API handler readiness check before webview load
 The plugin SHALL verify that `SpekHttpRequestHandler` is responding to HTTP requests before loading the webview URL in JCEF. This ensures the frontend does not encounter HTTP 404 errors due to the handler not being registered yet.
 
@@ -215,3 +208,37 @@ The IntelliJ server SHALL accept `GET /api/spek/openspec/specs?projectPath=<proj
 #### Scenario: Reject malformed version selector
 - **WHEN** a request supplies `at` without `topic` or a change slug containing a path separator
 - **THEN** the server returns HTTP 400
+
+### Requirement: Same-origin access only
+The handler SHALL serve a request — API or webview resource — only when it comes from the built-in server's
+own origin. On top of the IDE built-in server's own admission (a `Host` naming a local host, and an `Origin` /
+`Referer`, when present, naming a local host), the handler SHALL refuse a request whose `Origin` header is
+present and is not `http://` followed by the request's `Host` (compared case-insensitively), and a request whose
+`Sec-Fetch-Site` header is present and is neither `same-origin` nor `none`.
+
+The platform's admission compares host names without ports, so it admits a page served on any other local port,
+and the built-in server echoes each request's `Origin` back as `Access-Control-Allow-Origin`. Refusing the
+request is therefore the only control that stops another local page from reading the API. The tool window and
+the external-browser fallback both load the SPA from the built-in server and call it on the same origin, so they
+are unaffected.
+
+The handler SHALL NOT itself add `Access-Control-Allow-*` headers. The platform may still add them to a refused
+response; such a response carries no API data.
+
+#### Scenario: The plugin's own requests
+- **WHEN** the tool window's webview, loaded from `http://localhost:{port}/spek/webview/`, requests
+  `GET /api/spek/openspec/changes?projectPath=...` or sends the Refresh `POST /api/spek/openspec/resync` with
+  `Origin: http://localhost:{port}`
+- **THEN** the request is served
+
+#### Scenario: Another local port
+- **WHEN** a page served from `http://localhost:8080` requests `http://localhost:{port}/api/spek/openspec/changes`
+- **THEN** the handler does not serve it
+
+#### Scenario: Cross-site request without an Origin
+- **WHEN** a request arrives with `Sec-Fetch-Site: same-site` or `Sec-Fetch-Site: cross-site`
+- **THEN** the handler does not serve it
+
+#### Scenario: Foreign Host
+- **WHEN** a request arrives with `Host: evil.example`
+- **THEN** the handler does not serve it
