@@ -53,13 +53,16 @@ function connect(wsUrl) {
 // X11) a `dconf watch /system/proxy/` started beside the window inherited the DevTools socket and outlived it.
 const get = (path) => fetch(`${base}${path}`, { signal: AbortSignal.timeout(2000) });
 const silent = (e) => e.name === "TimeoutError";
-// Whether anything listens, asked with a bare TCP connect rather than HTTP.
+// Whether anything listens, asked with a bare TCP connect rather than HTTP. Only a refusal means free:
+// each unanswered probe stays in the leaked listener's accept queue, and once it is full the kernel
+// drops new SYNs, so an unbounded connect retried for ~130s and then reported ETIMEDOUT, read as free.
 const listening = () =>
   new Promise((resolve) => {
     const s = net.connect({ port: Number(port), host: "127.0.0.1" });
     const done = (v) => (s.destroy(), resolve(v));
     s.once("connect", () => done(true));
-    s.once("error", () => done(false));
+    s.setTimeout(2000, () => done(true));
+    s.once("error", (e) => done(e.code !== "ECONNREFUSED"));
   });
 // free: nothing listens; answering: an HTTP reply came back; occupied: something listens and gave none in time.
 const portState = () => get("/json/version").then(() => "answering", async () => ((await listening()) ? "occupied" : "free"));

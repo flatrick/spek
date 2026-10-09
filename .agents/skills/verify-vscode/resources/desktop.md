@@ -43,4 +43,5 @@ A pattern kill can also match the shell running it, whose own command line holds
 
 If it fails with "window closed; port … accepts connections and never answers", the window is gone but a process outside VS Code still held the DevTools socket after those 30 seconds, and the next launch on that port will fail.
 On Ubuntu 20.04 (GNOME on X11, VS Code 1.134) that was a `dconf watch /system/proxy/` started alongside the window and reparented to `systemd --user`; `ss -ltnp | grep :$PORT` named it, and stopping that one process freed the port (reported by another operator; it did not happen on GNOME Shell 51 on Arch, Wayland, VS Code 1.141, 2026-10-08).
-Before this check, `close` waited on that port with no timeout and never returned.
+It holds the socket from launch, not only after close: with the window still up, `ss -ltnp` listed both `code` and `dconf` on the port (2026-10-09).
+Before this check, `close` waited on that port with no timeout and never returned; with an unbounded TCP probe it waited about 144 seconds and then printed `closed` while `dconf` still held the port (2026-10-09).
