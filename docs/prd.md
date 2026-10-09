@@ -227,6 +227,11 @@ Each maps to one or more specs under `openspec/specs/`; that directory is author
 - **Local-only file access.** The server only ever reads `.md` / `.yaml` files under an `openspec/`
   directory — no arbitrary file access. This is the load-bearing security property behind
   "nothing leaves your machine."
+- **Local-only access.** The web app's API server listens on the loopback address only and answers only
+  the app's own origin: a foreign `Host` (DNS rebinding), a foreign `Origin` (including another local port)
+  and a cross-site `Sec-Fetch-Site` are refused, and no CORS access is granted. The IntelliJ handler
+  refuses any origin but the built-in server's own. Another device on the network, or a web page open in
+  the user's browser, cannot use either server to list directories or read OpenSpec content.
 - **English is the single source of truth** for everything committed to the repo — code, comments,
   OpenSpec artifacts, `docs/`, community files. The maintainer may draft in Traditional Chinese and
   have an agent finalize the committed English; readers who want another language are served by
