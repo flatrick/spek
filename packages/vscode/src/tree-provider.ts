@@ -184,10 +184,10 @@ class ChangeTreeItem extends vscode.TreeItem {
       tooltipLines.push(`${kind}: ${change.source.branch ?? change.source.path}`);
     }
     if (change.isCurrent) {
-      tooltipLines.push("目前 jj working copy (@) 正在編輯這個 change");
+      tooltipLines.push("The jj working copy (@) is currently editing this change");
     }
     if (change.conflictsWith) {
-      tooltipLines.push(`此版本與 ${change.conflictsWith} 的內容分歧（conflicts）`);
+      tooltipLines.push(`This jj workspace's copy diverges in content from ${change.conflictsWith}`);
     }
     this.tooltip = tooltipLines.join("\n");
 
